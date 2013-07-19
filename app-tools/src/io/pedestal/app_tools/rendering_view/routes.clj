@@ -16,7 +16,8 @@
             [io.pedestal.service.interceptor :as interceptor :refer [definterceptorfn]]
             [io.pedestal.app-tools.host-page :as host-page]
             [ring.util.response :as ring-response]
-            [clojure.edn :as edn]))
+            [clojure.edn :as edn]
+            [clojure.pprint :as pp]))
 
 (defn read-recording [config recording-name]
   (try (let [dir (-> config :built-in :render :dir)
@@ -130,27 +131,19 @@
         :headers {"Content-Type" "application/edn"}
         :body (pr-str (read-recording config recording-name))}))))
 
-(defn- format-output [recording-string]
-  (let [data (edn/read-string recording-string)]
-    (str "{:config " (pr-str (:config data)) "\n"
-         " :data\n"
-         " [\n"
-         (apply str (mapv #(str "  " (pr-str %) "\n") (:data data)))
-         " ]}")))
-
 (definterceptorfn save-recording
   [config]
   (interceptor/handler
    ::save-recording
    (fn [request]
-     (let [recording-name (get-in request [:path-params :recording])
-           recording (format-output (slurp (io/reader (:body request))))
+     (let [recording (edn/read-string (slurp (io/reader (:body request))))
+           recording-name (-> recording :config :name name)
            dir (get-in config [:built-in :render :dir])]
        (assert recording-name "Recordings must have a name")
        (assert dir "No dir found in config under [:built-in :render :dir]")
        (let [f (io/file (str "tools/recordings/" dir "/" recording-name ".clj"))]
          (.mkdirs (.getParentFile f))
-         (spit f recording)))
+         (pp/pprint recording (io/writer f))))
      {:status 200
       :headers {"Content-Type" "application/edn"}
       :body (pr-str {:status :ok})})))

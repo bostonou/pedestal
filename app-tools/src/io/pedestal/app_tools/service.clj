@@ -48,8 +48,8 @@
   [config]
   (expand-routes [[["/_tools/render" {:get (render-routes/serve-render-menu config)}
                     ["/recording" {:get (render-routes/serve-recording-page config)}]
-                    ["/recordings/:recording" {:get (render-routes/serve-recording config)
-                                               :post (render-routes/save-recording config)}]]]]))
+                    ["/recordings" {:post (render-routes/save-recording config)}]
+                    ["/recordings/:recording" {:get (render-routes/serve-recording config)}]]]]))
 
 ;; Consumed by chat-server.server/create-server
 (defn dev-service-def

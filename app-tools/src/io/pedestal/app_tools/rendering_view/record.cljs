@@ -61,14 +61,13 @@
       (update-when-recording)))
 
 (defn save-recording [recording]
-  (let [recording-name (get-in recording [:config :name])]
-    (xhr/request (gensym)
-                 (str "/_tools/render/recordings/" (name recording-name))
-                 :headers {"Content-Type" "application/edn"}
-                 :request-method "POST"
-                 :body (pr-str recording)
-                 :on-success (constantly nil)
-                 :on-error (constantly nil))))
+  (xhr/request (gensym)
+               "/_tools/render/recordings"
+               :headers {"Content-Type" "application/edn"}
+               :request-method "POST"
+               :body (pr-str recording)
+               :on-success (constantly nil)
+               :on-error (constantly nil)))
 
 (defmethod d/modal-title ::recording-info [transform-name messages]
   "Configure Recording")
