@@ -17,6 +17,7 @@
             [io.pedestal.app-tools.host-page :as host-page]
             [ring.util.response :as ring-response]
             [clojure.edn :as edn]
+            [clojure.core.incubator :refer [dissoc-in]]
             [clojure.pprint :as pp]))
 
 (defn read-recording [config recording-name]
@@ -28,11 +29,15 @@
                         "' found in tools/recordings/" dir)}))
        (catch Throwable e {:error (.getMessage e)})))
 
+(defn- load-config [file]
+  (let [config (:config (edn/read-string (slurp file)))
+        recording-name (clojure.string/replace (.getName file) #"\.clj" "")]
+    (merge config {:name recording-name})))
+
 (defn read-recording-menu [dir]
   (try (let [files (filter #(.endsWith (.getName %) ".clj")
                            (file-seq (io/file "tools/recordings" dir)))]
-         (mapv #(:config (edn/read-string (slurp %)))
-               files))
+         (mapv load-config files))
        (catch Throwable e {:error (.getMessage e)})))
 
 (defn recording-menu-html [config]
@@ -40,7 +45,7 @@
     (assert recordings-dir "recordings-dir is required")
     (apply str
            (mapv
-            #(let [uri (str "/_tools/render/recording?recording=" (name (:name %)))]
+            #(let [uri (str "/_tools/render/recording?recording=" (:name %))]
                (str "<tr>"
                    "<td>"
                    "<a href='" uri "'>" (:description %) "</a>"
@@ -138,12 +143,13 @@
    (fn [request]
      (let [recording (edn/read-string (slurp (io/reader (:body request))))
            recording-name (-> recording :config :name name)
+           recording-data (dissoc-in recording [:config :name])
            dir (get-in config [:built-in :render :dir])]
        (assert recording-name "Recordings must have a name")
        (assert dir "No dir found in config under [:built-in :render :dir]")
        (let [f (io/file (str "tools/recordings/" dir "/" recording-name ".clj"))]
          (.mkdirs (.getParentFile f))
-         (pp/pprint recording (io/writer f))))
+         (pp/pprint recording-data (io/writer f))))
      {:status 200
       :headers {"Content-Type" "application/edn"}
       :body (pr-str {:status :ok})})))
